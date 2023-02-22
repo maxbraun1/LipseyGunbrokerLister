@@ -1,10 +1,24 @@
 import axios from 'axios';
+import fs from 'fs';
 import * as dotenv from 'dotenv';
 import descriptionGenerator from './descriptionGenerator.js';
+import { downloadImage, editImage } from './imageGenerator.js';
 
 dotenv.config();
 
+let firstLog = true;
+export function logProcess(message){
+  if(firstLog){
+    console.log(message);
+    firstLog = false;
+  }else{
+    console.log("_________________________________________________________________________________");
+    console.log(message);
+  }
+}
+
 let LipseyAuthToken = new Promise(function(resolve, reject){
+  logProcess("Getting Lipseys API token...");
   const login_credentials = { "Email": process.env.LIPSEY_EMAIL, "Password": process.env.LIPSEY_PASSWORD };
   axios.post('https://api.lipseys.com/api/Integration/Authentication/Login', login_credentials,{
     headers: {
@@ -20,6 +34,7 @@ let LipseyAuthToken = new Promise(function(resolve, reject){
 });
 
 let GunBrokerAccessToken = new Promise(function(resolve,reject){
+  logProcess("Getting Gunbroker access token...");
   const gunbroker_credentials = { "Username": process.env.GUNBROKER_USERNAME, "Password": process.env.GUNBROKER_PASSWORD };
   axios.post('https://api.sandbox.gunbroker.com/v1/Users/AccessToken', gunbroker_credentials,{
   headers: {
@@ -38,7 +53,7 @@ let GunBrokerAccessToken = new Promise(function(resolve,reject){
 async function queryInventory(){
   
   let token = await LipseyAuthToken;
-
+  logProcess("Retrieving Lipseys Inventory...");
   axios.get('https://api.lipseys.com/api/Integration/Items/CatalogFeed', {
   headers: {
     Token: token
@@ -53,34 +68,102 @@ async function queryInventory(){
 }
 
 function filterByQuantityAvailable(dataset){
-  var lowestQuantityAllowed = 50;
-  var filtered = [];
+  logProcess("Filtering Results...");
+  let lowestQuantityAllowed = 1;
+  let typesAllowed = ['Semi-Auto Pistol','Rifle', 'Revolver', 'Shotgun'];
+  let filtered = [];
+  
   dataset.map((item) => {
-    if(item.quantity >= lowestQuantityAllowed){
+    if(item.quantity >= lowestQuantityAllowed && typesAllowed.includes(item.type)){
       filtered.push(item);
+      console.log(item.action);
     }
   });
   console.log(filtered[0]);
-  postOnGunBroker(filtered[0]);
+  //postOnGunBroker(filtered[20]);
 }
 
 async function postOnGunBroker(item){
+  // Generate and Edit Thumbnail
+  logProcess("Generating thumbnail image...");
+  let imgPath = await downloadImage("https://www.lipseyscloud.com/images/"+item.imageName, "tmp/tmp.jpeg");
+  console.log(imgPath);
+  let editedImgPath = await editImage(imgPath);
+  console.log(editedImgPath);
+  let thumbnail = fs.readFileSync(editedImgPath);
 
   // Data calculations and organizations
-  var weight;
+  let weight;
   if(item.weight == null){
     weight = 5.0;
   }else{
     weight = item.weight;
+    weight = weight.replace(" lbs.", "");
+  }
+  
+  // Setting Category IDs and Shipping Prices
+  let categoryID;
+  let ShippingPrice = 30;
+
+  switch(item.type) {
+    case 'Semi-Auto Pistol':
+      ShippingPrice = 29;
+      categoryID = 3026;
+      break;
+    case 'Rifle':
+      switch (item.action) {
+        case 'Semi-Auto':
+          categoryID = 3024;
+          break;
+        case 'Single Shot':
+          categoryID = 3011;
+          break;
+        case 'Pump Action':
+          categoryID = 3102;
+          break;
+        case 'Bolt Action':
+          categoryID = 3022;
+          break;
+        case 'Lever Action':
+          categoryID = 3023;
+          break;
+        default:
+          categoryID = 3025;
+      }
+      break;
+    case 'Revolver':
+      categoryID = 2325;
+      break;
+    case 'Shotgun':
+      switch (item.action) {
+        case 'Semi-Auto':
+          categoryID = 3105;
+          break;
+        case 'Side By Side':
+          categoryID = 3104;
+          break;
+        case 'Over / Under':
+          categoryID = 3103;
+          break;
+        case 'Pump Action':
+          categoryID = 3106;
+          break;
+        default:
+          categoryID = 3108;
+      }
+      break;
+    default:
+      categoryID = 3004;
   }
 
   var title = item.manufacturer + " " + item.model + " " + item.caliberGauge + " " + item.capacity;
 
   // Prepare order
+  logProcess("Preparing listing data...");
   var listingSettings = {
     AutoRelist: 1, // Do not relist
     CanOffer: false, 
-    CategoryID: 3026, //[TODO] Need to find Category IDs
+    CategoryID: categoryID,
     Characteristics: {
       Manufacturer: item.manufacturer,
       Model: item.model,
@@ -88,7 +171,7 @@ async function postOnGunBroker(item){
     },
     Condition: 1,
     CountryCode: "US",
-    Description: descriptionGenerator(item), // [TODO] Create description generator
+    Description: descriptionGenerator(item),
     FixedPrice: 1000, // [TODO] Calculate based on Lipsey Price
     InspectionPeriod: 1,
     isFFLRequired: true,
@@ -109,10 +192,9 @@ async function postOnGunBroker(item){
       FreedomCoin: false
     },
     PaymentPlan: 0,
-    PictureURLs: ['https://seattleengravingcenter.com/wp-content/uploads/2022/12/colt-1911-comp-skull-flowers-2.jpg'],
     PremiumFeatures: {
       IsFeaturedItem: true,
-      ThumbnailURL: "https://seattleengravingcenter.com/wp-content/uploads/2022/12/colt-1911-comp-skull-flowers-2.jpg",
+      ThumbnailURL: "current",
     },
     PostalCode: "33511",
     Prop65Warning: "Cancer and Reproductive Harm www.P65Warnings.ca.gov",
@@ -129,7 +211,7 @@ async function postOnGunBroker(item){
       AlaskaHawaii: false,
       Other: false
     },
-    ShippingClassCosts: { Ground: 1.00 }, // [TODO] Calculate shipping cost based on product weight from Lipsey
+    ShippingClassCosts: { Ground: ShippingPrice },
     StandardTextID: 1138,
     Title: title,
     UPC: item.upc,
@@ -143,10 +225,13 @@ async function postOnGunBroker(item){
   const listingSettingsBlob = new Blob([listingSettingsJSON], {
     type: 'form-data',
   });
+  const thumbnailBlob = new Blob([thumbnail], { name: "thumbnail", type: 'image/jpeg', 'Content-Disposition':'form-data', filename:'thumbnail.jpeg' });
   const data = new FormData();
   data.append("data", listingSettingsBlob);
+  data.append("thumbnail", thumbnailBlob);
 
   let token = await GunBrokerAccessToken;
+  logProcess("Sending Listing to Gunbroker...");
   axios.post('https://api.sandbox.gunbroker.com/v1/Items', data, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -156,6 +241,15 @@ async function postOnGunBroker(item){
   })
   .then(function (response) {
     console.log(response);
+    logProcess("Deleting temporarily stored images...");
+    const TmpImagePath = 'tmp/tmp.jpeg';
+    const CurrentImagePath = 'tmp/thumbnail.jpeg'
+    try {
+      fs.unlinkSync(TmpImagePath);
+      fs.unlinkSync(CurrentImagePath);
+    } catch(err) {
+      console.error(err)
+    }
   })
   .catch(function (error) {
     console.log(error.response.data);
