@@ -129,7 +129,7 @@ function filterProducts(dataset){
     }
   });
   logProcess(chalk.green.bold(filtered.length) + " products eligable to post (after filter)");
-  postAllListings(filtered, 100);
+  postAllListings(filtered, 1000);
 }
 
 function postOnGunBroker(item){
@@ -139,6 +139,11 @@ function postOnGunBroker(item){
     let alreadyPosted = await checkAlreadyPosted(item.upc);
     if(alreadyPosted){
       logProcess("Item already posted", "warning");
+      return;
+    }
+
+    // Check for abnormal UPC
+    if(item.upc.toString().length != 12){
       return;
     }
 
