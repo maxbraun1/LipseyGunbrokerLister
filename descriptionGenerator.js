@@ -1,11 +1,12 @@
 function descriptionGenerator(item){
-    var title = item.manufacturer + " " + item.model + " " + item.caliberGauge + " " + item.capacity + " - " + item.upc;
+    var title = item.manufacturer + " " + item.model + " " + item.caliberGauge + " " + item.capacity + " | " + item.upc;
     let html = "<div style='padding:0;margin:0;background-color:#ffffff;border:1px solid gainsboro;color:black;font-family:Arial, Helvetica, sans-serif;margin:0px;padding:30px;'>";
     html = html + "<img alt='SEC Guns' height='148' src='https://secguns.com/wp-content/uploads/2022/07/White-Background-Navy-Blue-Logo-3882-x-4565-01-2-1-e1658779192334.jpg' style='max-width: 100px; margin:10px auto; display:block;'/>";
     
     html = html + "<a style='display:block;background-color:#031834;color:white;padding:10px 30px;border-radius: 5px;text-decoration: none;margin:20px auto;width:fit-content;' href='https://www.gunbroker.com/All/search?IncludeSellers=2795514' target='_blank'>VIEW MORE LISTINGS</a>";
-     
 
+    html = html + "<p style='color:red; font-size:24px;text-align: center; font-weight: bold;'>Due to high volume, shipping will take 7-10 business days.</p>";
+    
     html = html + "<div style='width: 100%;background-color: #6de086;padding: 10px;display: flex;border-radius: 5px;border: 2px solid #5cbe71;box-sizing:border-box;margin-bottom:5px;'>";
     html = html + "<img style='width:25px;height:25px;' src='https://secguns.com/wp-content/uploads/2022/12/credit-card.png'/>";
     html = html + "<p style='line-height:25px;font-weight:bold;text-transform:uppercase;margin-bottom:0; margin-left:10px; margin-right:0; margin-top:0;'>No credit card fee!</p>";
@@ -21,8 +22,9 @@ function descriptionGenerator(item){
 
     if(item.type != null){ html = html + "Type: "+item.type+"<br />" };
     if(item.action != null){ html = html + "Action: "+item.action+"<br />" };
-    if(item.capacity != null){ html = html + "Sights: "+item.capacity+"<br />" };
+    if(item.capacity != null){ html = html + "Capacity: "+item.capacity+"<br />" };
     if(item.overallLength != null){ html = html + "Overall Length: "+item.overallLength+"<br />" };
+    if(item.weight != null){ html = html + "Weight: "+item.weight+"<br />" };
     if(item.safety != null){ html = html + "Safety: "+item.safety+"<br />" };
     if(item.frame != null){ html = html + "Frame Type: "+item.frame+"<br />" };
     if(item.finish != null){ html = html + "Finish: "+item.finish+"<br />" };
@@ -80,8 +82,7 @@ function descriptionGenerator(item){
         
     html = html + "<p style='line-height: 1.2em;margin-bottom:10px;'>By sending a defective firearm directly to the manufacturer, you can avoid the unnecessary transfer fees associated with returning the firearm to us through your local FFL dealer. Manufacturer repaired firearms can be returned directly to the customer without additional FFL transfer or associated fees.</p>";
 
-    html = html + "<p style='line-height: 1.2em;margin-bottom:10px;'><strong>7)</strong> All orders are shipped promptly from in-store inventory within 7-10 business days using FedEX upon receiving payment &amp; verified FFL information.<br />";
-    html = html + "Tracking numbers are available for items shipped via FedEX. Per FedEx guidelines in most cases, the expected delivery date printed on your receipt or provided at checkout will reflect a delivery time of 1, 2, or 3 business days and is based on origin, destination, and drop-off time. The expected delivery date does not come with a money-back guarantee.</p>";
+    html = html + "<p style='line-height: 1.2em;margin-bottom:10px;'><strong>7)</strong> All orders are shipped within 7-10 business days using UPS upon receiving payment &amp; verified FFL information.</p>";
         
         
     html = html + "<div style='background-color:gainsboro;padding:20px;border-radius:5px;line-height: 1.2em;margin-top:30px;'>";
