@@ -3,46 +3,56 @@ import client from 'https';
 import sharp from 'sharp';
 import { logProcess } from './index.js';
 
-function downloadImage(url, filepath) {
-    logProcess("Downloading Lipseys product image...");
-    return new Promise((resolve, reject) => {
+
+
+async function generateImages(url){
+    return new Promise(async (resolve, reject) => {
+        console.log("here1");
         client.get(url, (res) => {
+            console.log("here2");
             if (res.statusCode === 200) {
-                res.pipe(fs.createWriteStream(filepath))
-                    .on('error', (error) => {reject; console.log(error)})
-                    .once('close', () => {
-                        resolve(filepath);
-                        logProcess("Lipseys product image saved.", "good");
+                console.log("here3");
+                res.setTimeout(5000);
+                res.pipe(fs.createWriteStream('tmp/tmp.jpeg'))
+                    .on('error', (error) => {
+                        console.log(error);
+                        reject(error)
+                    })
+                    .once('close', async () => {
+                        console.log("here4");
+                        try{
+                            sharp.cache(false);
+                            console.log("here10");
+                            let template = sharp("tmp/template.jpg");
+                            console.log("here11");
+                            let tmpBuffer = await sharp('tmp/tmp.jpeg').resize({ width: 950 }).toBuffer();
+                            console.log("here12");
+                            await sharp(tmpBuffer).toFile('tmp/tmp.jpeg');
+                            console.log("here13");
+                            template.composite([
+                                { input: 'tmp/tmp.jpeg' }, { input: 'tmp/text.png', gravity: 'south'}
+                            ]);
+                            console.log("here14");
+                            await template.toFile('tmp/thumbnail.jpeg');
+                            console.log("here5");
+                            resolve();
+                        }catch (error) {
+                            console.log("here6");
+                            reject(error);
+                        }
                     });
             } else {
+                console.log("here7");
                 // Consume response data to free up memory
                 res.resume();
-                reject(new Error(`Request Failed With a Status Code: ${res.statusCode}`));
-                console.log("error");
+                reject("Couldn't download file.");
             }
+        }).on('error', function(e) {
+            console.log("here8");
+            logProcess('problem with request: ' + e.message, 'bad');
+            reject("Connection Interuption");
         });
     });
 }
 
-function editImage(path){
-    logProcess("Generating thumbnail image...");
-    return new Promise( async (resolve,reject) => {
-
-        sharp.cache(false);
-
-        let template = sharp("tmp/template.jpg");
-
-        let buffer = await sharp(path)
-            .resize({ width: 950 })
-            .toBuffer();
-        sharp(buffer).toFile(path).then( async () => {
-            template.composite([
-                { input: path }, { input: 'tmp/text.png', gravity: 'south'}
-            ]);
-    
-            await template.toFile('tmp/thumbnail.jpeg');
-        }).then(() => resolve("tmp/thumbnail.jpeg"));
-    });
-}
-
-export {downloadImage, editImage};
+export {generateImages};
